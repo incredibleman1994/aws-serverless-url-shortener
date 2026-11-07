@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Serverless URL Shortener</title>
+  <style>
+    :root { --bg:#f6f7f9; --card:#fff; --text:#1c2330; --muted:#667085; --accent:#ff9900; --border:#e1e4ea; }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg:#0f1218; --card:#181d27; --text:#eef1f6; --muted:#98a2b3; --border:#2a3140; }
+    }
+    * { box-sizing: border-box; }
+    body { margin:0; min-height:100vh; display:grid; place-items:center; padding:1rem;
+           background:var(--bg); color:var(--text); font-family: system-ui, -apple-system, Segoe UI, sans-serif; }
+    main { width:100%; max-width:520px; background:var(--card); border:1px solid var(--border);
+           border-radius:14px; padding:2rem; }
+    h1 { margin:0 0 .25rem; font-size:1.4rem; }
+    p.sub { margin:0 0 1.5rem; color:var(--muted); font-size:.95rem; }
+    input, button { font:inherit; padding:.7rem .9rem; border-radius:8px; border:1px solid var(--border); }
+    input { width:100%; background:var(--bg); color:var(--text); }
+    button { margin-top:.75rem; width:100%; background:var(--accent); color:#111; font-weight:600; border:0; cursor:pointer; }
+    button:disabled { opacity:.6; cursor:wait; }
+    #result { margin-top:1.25rem; font-size:.95rem; word-break:break-all; }
+    #result.error { color:#d92d20; }
+    footer { margin-top:1.5rem; font-size:.8rem; color:var(--muted); }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Serverless URL Shortener</h1>
+    <p class="sub">CloudFront · S3 · API Gateway · Lambda · DynamoDB</p>
+    <input id="url" type="url" placeholder="https://example.com/a/very/long/link" autocomplete="off">
+    <button id="go">Shorten</button>
+    <div id="result" aria-live="polite"></div>
+    <footer>Links expire after one year.</footer>
+  </main>
+
+  <script>
+    const input = document.getElementById("url");
+    const button = document.getElementById("go");
+    const result = document.getElementById("result");
+
+    async function shorten() {
+      result.className = "";
+      result.textContent = "";
+      button.disabled = true;
+      try {
+        const res = await fetch("/api/shorten", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url: input.value.trim() }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Something went wrong");
+
+        const shortUrl = `${location.origin}/r/${data.code}`;
+        const a = document.createElement("a");
+        a.href = shortUrl;
+        a.textContent = shortUrl;
+        result.append("Your short link: ", a);
+      } catch (err) {
+        result.className = "error";
+        result.textContent = err.message;
+      } finally {
+        button.disabled = false;
+      }
+    }
+
+    button.addEventListener("click", shorten);
+    input.addEventListener("keydown", (e) => { if (e.key === "Enter") shorten(); });
+  </script>
+</body>
+</html>
